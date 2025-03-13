@@ -629,6 +629,8 @@ int main(int argc, char ** argv) {
                 }
             }
 
+            // fprintf(stderr, "%s: n_past = %d, embd size = %zu\n", __func__, n_past, embd.size());
+
             for (int i = 0; i < (int) embd.size(); i += params.n_batch) {
                 int n_eval = (int) embd.size() - i;
                 if (n_eval > params.n_batch) {

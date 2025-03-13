@@ -196,14 +196,25 @@ export const AppContextProvider = ({
         throw new Error(body?.error?.message || 'Unknown error');
       }
       const chunks = getSSEStreamAsync(fetchResponse);
+      // let receive = true;
       for await (const chunk of chunks) {
         // const stop = chunk.stop;
         if (chunk.error) {
           throw new Error(chunk.error?.message || 'Unknown error');
         }
         const addedContent = chunk.choices[0].delta.content;
+        // if(addedContent === "<think>"){
+        //     receive = false;
+        //     continue;
+        // }
+        // else if(addedContent === "</think>"){   
+        //     receive = true;
+        //     continue
+        // }
         const lastContent = pendingMsg.content || '';
         if (addedContent) {
+        // if (addedContent && receive) {
+          // console.log(addedContent, lastContent)
           pendingMsg = {
             id: pendingMsg.id,
             role: 'assistant',

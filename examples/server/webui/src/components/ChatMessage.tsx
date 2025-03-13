@@ -44,6 +44,7 @@ export default function ChatMessage({
     if (msg.content === null || msg.role !== 'assistant') {
       return { content: msg.content };
     }
+    // const start = performance.now(); // Start timing
     let actualContent = '';
     let thought = '';
     let isThinking = false;
@@ -61,6 +62,9 @@ export default function ChatMessage({
         actualContent += thinkSplit[0];
       }
     }
+    // const end = performance.now(); // End timing
+    // console.log(`Execution time: ${(end - start).toFixed(5)} ms`, msg.content);
+    // console.log({ actualContent, thought, isThinking });
     return { content: actualContent, thought, isThinking };
   }, [msg]);
 

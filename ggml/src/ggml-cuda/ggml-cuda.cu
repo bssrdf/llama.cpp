@@ -2463,7 +2463,7 @@ static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct gg
             break;
         case GGML_OP_CONV_2D:
             if (!getenv("GGML_CUDA_USE_LEGACY_CONV") &&
-                (dst->src[0]->type == GGML_TYPE_F32 && dst->src[1]->type == GGML_TYPE_F32 &&
+                (dst->src[1]->type == GGML_TYPE_F32 &&
                  dst->type == GGML_TYPE_F32)) {
                 ggml_cuda_op_conv2d_mm(ctx, dst);
             } else {

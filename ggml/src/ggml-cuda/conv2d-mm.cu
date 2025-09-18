@@ -1,4 +1,5 @@
 #include "conv2d-mm.cuh"
+#include "convert.cuh"
 
 #include <cuda_runtime.h>
 
@@ -12,6 +13,8 @@
 #define B_OPT  // Optimizes B for reducing bank conflicts
 
 #define CEIL_DIV(M, N) (((M) + (N) - 1) / (N))
+
+typedef uint32_t uint;
 
 uint32_t ceil_div(uint32_t M, uint32_t N);
 int      get_sm_count();
@@ -69,11 +72,11 @@ __inline__ __device__ uint fastdiv(uint n, uint mp, uint L) {
 }
 
 // --> conv_2d kernel modified to function as a matmul
-template <uint BS_K, uint BS_NPQ, uint BS_CRS, uint TS_K, uint TS_NPQ, uint WG_SIZE, uint VEC_SIZE>
+template <typename T, uint BS_K, uint BS_NPQ, uint BS_CRS, uint TS_K, uint TS_NPQ, uint WG_SIZE, uint VEC_SIZE>
 __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
                                                  uint          NPQ,
                                                  uint          CRS,
-                                                 const float * knl_data,
+                                                 const T *     knl_data,
                                                  const float * src_data,
                                                  float *       dst_data) {
     // Each block computes a tile of the result of size BS_K*BS_NPQ
@@ -98,7 +101,8 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
     const uint T_y = threadIdx.x / NT_x;
     const uint T_x = threadIdx.x % NT_x;
 
-    __shared__ float Ash[BS_K * BS_CRS];
+    // __shared__ float Ash[BS_K * BS_CRS];
+    __shared__ T Ash[BS_K * BS_CRS];
     __shared__ float Bsh[BS_CRS * BS_NPQ];
 
     const uint Ar = threadIdx.x / BS_CRS;
@@ -148,9 +152,9 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
             // General addressing (does not assume contiguity)
             //const uint32_t knl_idx = KW_idx_a + KH_idx_a*dp.nb01 + Cin_idx_a*dp.nb02 + K_idx_a*dp.nb03;
             // Contiguous addressing
-            float          val     = knl_data[min(CRS_idx_a + K_idx_a * dp.nb03, K * CRS - 1)];
+            T          val     = knl_data[min(CRS_idx_a + K_idx_a * dp.nb03, K * CRS - 1)];
             if (CRS_idx_a >= CRS || K_idx_a >= K) {
-                val = 0.0;
+                val = (T)0.0;
             }
 
 #ifdef A_TRANS
@@ -235,9 +239,9 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
 #    else
                     uint32_t col_offset = (T_y * TS_K + T_ly);
 #    endif
-                    regA[T_ly] = Ash[CRS_lidx * BS_K + col_offset];
+                    regA[T_ly] = ggml_cuda_cast<float>(Ash[CRS_lidx * BS_K + col_offset]);
 #else
-                    regA[T_ly] = Ash[(T_y * TS_K + T_ly) * BS_CRS + CRS_lidx];
+                    regA[T_ly] = ggml_cuda_cast<float>(Ash[(T_y * TS_K + T_ly) * BS_CRS + CRS_lidx]);
 #endif
                 }
                 for (uint32_t T_lx = 0; T_lx < TS_NPQ; ++T_lx) {
@@ -343,16 +347,22 @@ void ggml_cuda_op_conv_2d_variant(ggml_backend_cuda_context & ctx,
     cudaMemcpyToSymbol(dp, &p, sizeof(Params));
 
     // Kernel arguments
-    float * src0_data = (float *) src0->data;
     float * src1_data = (float *) src1->data;
     float * dst_data  = (float *) dst->data;
 
     dim3         gridDim(NB_K, NB_NPQ);
     dim3         blockDim(WG_SIZE);
     cudaStream_t stream = ctx.stream();
-
-    mm<BS_K, BS_NPQ, BS_CRS, TS_K, TS_NPQ, WG_SIZE, VEC_SIZE>
+    if(src0->type == GGML_TYPE_F16) {
+        half *src0_data = (half *) src0->data;
+        mm<half, BS_K, BS_NPQ, BS_CRS, TS_K, TS_NPQ, WG_SIZE, VEC_SIZE>
+            <<<gridDim, blockDim, 0, stream>>>(p.Cout, NPQ, p.Cin * p.KW * p.KH, src0_data, src1_data, dst_data);
+    } else {
+        float *src0_data = (float *) src0->data;
+        mm<float, BS_K, BS_NPQ, BS_CRS, TS_K, TS_NPQ, WG_SIZE, VEC_SIZE>
         <<<gridDim, blockDim, 0, stream>>>(p.Cout, NPQ, p.Cin * p.KW * p.KH, src0_data, src1_data, dst_data);
+    }
+
 }
 
 void ggml_cuda_op_conv2d_mm(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
@@ -372,13 +382,13 @@ void ggml_cuda_op_conv2d_mm(ggml_backend_cuda_context & ctx, ggml_tensor * dst) 
     ggml_tensor * src0 = dst->src[0];
     ggml_tensor * src1 = dst->src[1];
 
-    GGML_ASSERT(src0->type == GGML_TYPE_F32);
+    // GGML_ASSERT(src0->type == GGML_TYPE_F32);
     GGML_ASSERT(src1->type == GGML_TYPE_F32);
     GGML_ASSERT(dst->type == GGML_TYPE_F32);
 
     GGML_TENSOR_BINARY_OP_LOCALS
 
-    GGML_ASSERT(nb00 == sizeof(float));
+    // GGML_ASSERT(nb00 == sizeof(float));
     GGML_ASSERT(nb10 == sizeof(float));
     GGML_ASSERT(nb0 == sizeof(float));
 

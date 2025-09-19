@@ -54,22 +54,13 @@ __align__(16) struct Params {
     uint32_t nb2;
     uint32_t nb3;
 
-    uint32_t KWmp;
-    uint32_t KWL;
-    uint32_t KWKHmp;
-    uint32_t KWKHL;
-    uint32_t OWmp;
-    uint32_t OWL;
-    uint32_t OWOHmp;
-    uint32_t OWOHL;
+    uint3 KW_fastdiv;
+    uint3 KWKH_fastdiv;
+    uint3 OW_fastdiv;
+    uint3 OWOH_fastdiv;
 };
 
 __constant__ __device__ Params dp;
-
-// see init_fastdiv_values in ggml-vulkan.cpp
-__inline__ __device__ uint fastdiv(uint n, uint mp, uint L) {
-    return (__umulhi(n, mp) + n) >> L;
-}
 
 // --> conv_2d kernel modified to function as a matmul
 template <typename T, uint BS_K, uint BS_NPQ, uint BS_CRS, uint TS_K, uint TS_NPQ, uint WG_SIZE, uint VEC_SIZE>
@@ -139,10 +130,10 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
 #else
         uint32_t CRS_idx_a     = idx_CRS + Ac;  //Global CRS_idx (column index of A)
         //uint32_t Cin_idx_a = CRS_idx_a / (dp.KW*dp.KH);
-        uint32_t Cin_idx_a     = fastdiv(CRS_idx_a, dp.KWKHmp, dp.KWKHL);  // divide by (p.KW * p.KH); / (p.KW * p.KH);
+        uint32_t Cin_idx_a     = fastdiv(CRS_idx_a, dp.KWKH_fastdiv);  // divide by (p.KW * p.KH); / (p.KW * p.KH);
         uint32_t CRS_remainder = CRS_idx_a - Cin_idx_a * dp.KW * dp.KH;
         //uint32_t KH_idx_a = (CRS_idx_a - Cin_idx_a*dp.KW*dp.KH) / dp.KW;
-        uint32_t KH_idx_a      = fastdiv(CRS_remainder, dp.KWmp, dp.KWL);  // divide by p.KW;
+        uint32_t KH_idx_a      = fastdiv(CRS_remainder, dp.KW_fastdiv);  // divide by p.KW;
 //uint32_t KW_idx_a = CRS_idx_a - Cin_idx_a*dp.KW*dp.KH - KH_idx_a*dp.KW; // unused
 #endif
 
@@ -177,10 +168,10 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
             // Compute indices for N, OH, OW from NPQ_idx
             const uint32_t NPQ_idx       = B_idx_NPQ * BS_NPQ + Bc; /* Global NPQ index (column index of B) */
             //const uint32_t N_idx = NPQ_idx / (dp.OH*dp.OW);
-            uint32_t       N_idx         = fastdiv(NPQ_idx, dp.OWOHmp, dp.OWOHL);  // divide by p.OH * p.OW;
+            uint32_t       N_idx         = fastdiv(NPQ_idx, dp.OWOH_fastdiv);  // divide by p.OH * p.OW;
             uint32_t       NPQ_remainder = NPQ_idx - N_idx * dp.OH * dp.OW;
             //const uint32_t OH_idx = (NPQ_idx - N_idx*dp.OH*dp.OW) / dp.OW;
-            uint32_t       OH_idx        = fastdiv(NPQ_remainder, dp.OWmp, dp.OWL);  // divide by p.OW;
+            uint32_t       OH_idx        = fastdiv(NPQ_remainder, dp.OW_fastdiv);  // divide by p.OW;
             const uint32_t OW_idx        = NPQ_idx - N_idx * dp.OH * dp.OW - OH_idx * dp.OW;
 
 #ifdef USE_COLLECTIVES
@@ -192,10 +183,10 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
             // Compute indices KH, KW, Cin from CRS_idx
             uint32_t CRS_idx_b = idx_CRS + r_offset + Br;
             //uint32_t Cin_idx_b = CRS_idx_b / (dp.KW*dp.KH);
-            uint32_t Cin_idx_b = fastdiv(CRS_idx_b, dp.KWKHmp, dp.KWKHL);  // divide by (p.KW * p.KH); / (p.KW * p.KH);
+            uint32_t Cin_idx_b = fastdiv(CRS_idx_b, dp.KWKH_fastdiv);  // divide by (p.KW * p.KH); / (p.KW * p.KH);
             uint32_t CRS_remainder = CRS_idx_b - Cin_idx_b * dp.KW * dp.KH;
             //uint32_t KH_idx_b = (CRS_idx_b - Cin_idx_b*dp.KW*dp.KH) / dp.KW;
-            uint32_t KH_idx_b      = fastdiv(CRS_remainder, dp.KWmp, dp.KWL);  // divide by p.KW;
+            uint32_t KH_idx_b      = fastdiv(CRS_remainder, dp.KW_fastdiv);  // divide by p.KW;
             uint32_t KW_idx_b      = CRS_idx_b - Cin_idx_b * dp.KW * dp.KH - KH_idx_b * dp.KW;
 #endif
 
@@ -271,9 +262,9 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
             const uint32_t K_idx     = B_idx_K * BS_K + T_y * TS_K + T_ly;
             const uint32_t NPQ_idx_c = B_idx_NPQ * BS_NPQ + T_x * TS_NPQ + T_lx;
             //const uint32_t N_idx_c = NPQ_idx_c / (dp.OH*dp.OW);
-            const uint32_t N_idx_c   = fastdiv(NPQ_idx_c, dp.OWOHmp, dp.OWOHL);  // divide by p.OH * p.OW;
+            const uint32_t N_idx_c   = fastdiv(NPQ_idx_c, dp.OWOH_fastdiv);  // divide by p.OH * p.OW;
             //const uint32_t OH_idx_c = (NPQ_idx_c - N_idx_c*dp.OH*dp.OW) / dp.OW;
-            const uint32_t OH_idx_c = fastdiv(NPQ_idx_c - N_idx_c * dp.OH * dp.OW, dp.OWmp, dp.OWL);  // divide by p.OW;
+            const uint32_t OH_idx_c = fastdiv(NPQ_idx_c - N_idx_c * dp.OH * dp.OW, dp.OW_fastdiv);  // divide by p.OW;
             const uint32_t OW_idx_c = NPQ_idx_c - N_idx_c * dp.OH * dp.OW - OH_idx_c * dp.OW;
             const uint32_t dst_idx  = OW_idx_c + OH_idx_c * dp.nb1 + K_idx * dp.nb2 + N_idx_c * dp.nb3;
             if (K_idx < K && NPQ_idx_c < NPQ) {
@@ -281,22 +272,6 @@ __global__ void __launch_bounds__(WG_SIZE, 1) mm(uint          K,
             }
         }
     }
-}
-
-// See https://gmplib.org/~tege/divcnst-pldi94.pdf figure 4.1.
-// Precompute mp (m' in the paper) and L such that division
-// can be computed using a multiply (high 32b of 64b result)
-// and a shift:
-//
-// n/d = (mulhi(n, mp) + n) >> L;
-static void init_fastdiv_values(uint32_t d, uint32_t & mp, uint32_t & L) {
-    // compute L = ceil(log2(d));
-    L = 0;
-    while (L < 32 && (uint32_t{ 1 } << L) < d) {
-        L++;
-    }
-
-    mp = (uint32_t) ((uint64_t{ 1 } << 32) * ((uint64_t{ 1 } << L) - d) / d + 1);
 }
 
 constexpr int conv_shapes[][NUM_VARIANTS] = {
@@ -382,13 +357,13 @@ void ggml_cuda_op_conv2d_mm(ggml_backend_cuda_context & ctx, ggml_tensor * dst) 
     ggml_tensor * src0 = dst->src[0];
     ggml_tensor * src1 = dst->src[1];
 
-    // GGML_ASSERT(src0->type == GGML_TYPE_F32);
+    GGML_ASSERT(src0->type == GGML_TYPE_F32 || src0->type == GGML_TYPE_F16);
     GGML_ASSERT(src1->type == GGML_TYPE_F32);
     GGML_ASSERT(dst->type == GGML_TYPE_F32);
 
     GGML_TENSOR_BINARY_OP_LOCALS
 
-    // GGML_ASSERT(nb00 == sizeof(float));
+    GGML_ASSERT(nb00 == sizeof(float) || nb00 == sizeof(half));
     GGML_ASSERT(nb10 == sizeof(float));
     GGML_ASSERT(nb0 == sizeof(float));
 
@@ -423,10 +398,10 @@ void ggml_cuda_op_conv2d_mm(ggml_backend_cuda_context & ctx, ggml_tensor * dst) 
     p.nb2 = static_cast<uint32_t>(nb2 / nb0);
     p.nb3 = static_cast<uint32_t>(nb3 / nb0);
 
-    init_fastdiv_values(p.KW, p.KWmp, p.KWL);
-    init_fastdiv_values(p.KW * p.KH, p.KWKHmp, p.KWKHL);
-    init_fastdiv_values(p.OW, p.OWmp, p.OWL);
-    init_fastdiv_values(p.OW * p.OH, p.OWOHmp, p.OWOHL);
+    p.KW_fastdiv = init_fastdiv_values(p.KW);
+    p.KWKH_fastdiv = init_fastdiv_values(p.KW * p.KH);
+    p.OW_fastdiv = init_fastdiv_values(p.OW);
+    p.OWOH_fastdiv = init_fastdiv_values(p.OW * p.OH);
 
     GGML_ASSERT(ne03 == ne2);
     GGML_ASSERT(ne02 == ne12);

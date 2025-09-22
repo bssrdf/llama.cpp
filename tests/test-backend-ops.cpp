@@ -5847,6 +5847,10 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
         }
     }
 
+    test_cases.emplace_back(new test_conv_2d({ 28, 36, 640, 1 }, { 3, 3, 640, 640 }, GGML_TYPE_F32, 1, 1, 1, 1, 1, 1, false));
+    test_cases.emplace_back(new test_conv_2d({ 28, 36, 640, 1 }, { 3, 3, 640, 640 }, GGML_TYPE_F16, 1, 1, 1, 1, 1, 1, false));
+    test_cases.emplace_back(new test_conv_2d({ 26, 38, 1280, 1 }, { 3, 3, 1280, 1280 }, GGML_TYPE_F32, 1, 1, 1, 1, 1, 1, false));
+
     // sycl backend will limit task global_range < MAX_INT
     // test cases for 2D im2col with large input W and H (occurs in stable-diffusion)
     // however these cases need to alloc more memory which may fail in some devices (Intel Arc770, etc.)

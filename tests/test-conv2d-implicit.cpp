@@ -63,8 +63,8 @@ void load_model(test_model & model, int ic, int oc, int iw, int ih, bool use_gpu
 
     size_t buffer_size = 0;
     {
-        buffer_size += KW * KH * IC * OC * ggml_type_size(GGML_TYPE_F32); // tensor a
-        // buffer_size += KW * KH * IC * OC * ggml_type_size(GGML_TYPE_F16); // tensor a
+        // buffer_size += KW * KH * IC * OC * ggml_type_size(GGML_TYPE_F32); // tensor a
+        buffer_size += KW * KH * IC * OC * ggml_type_size(GGML_TYPE_F16); // tensor a
         buffer_size += IW * IH * IC * N  * ggml_type_size(GGML_TYPE_F32); // tensor b
         buffer_size += 1024; // overhead
     }
@@ -112,8 +112,8 @@ void load_model(test_model & model, int ic, int oc, int iw, int ih, bool use_gpu
     model.ctx = ggml_init(params);
 
     // create tensors
-    model.a = ggml_new_tensor_4d(model.ctx, GGML_TYPE_F32,  KW, KH, IC, OC);
-    // model.a = ggml_new_tensor_4d(model.ctx, GGML_TYPE_F16,  KW, KH, IC, OC);
+    // model.a = ggml_new_tensor_4d(model.ctx, GGML_TYPE_F32,  KW, KH, IC, OC);
+    model.a = ggml_new_tensor_4d(model.ctx, GGML_TYPE_F16,  KW, KH, IC, OC);
     model.b = ggml_new_tensor_4d(model.ctx, GGML_TYPE_F32, IW, IH, IC, N);
 
     // create a allocator
@@ -124,9 +124,9 @@ void load_model(test_model & model, int ic, int oc, int iw, int ih, bool use_gpu
 
     // load data to buffer
     if(ggml_backend_is_cpu(model.backend)) {
-        memcpy(model.a->data, adata.data(), ggml_nbytes(model.a));
+        memcpy(model.a->data, hadata.data(), ggml_nbytes(model.a));
     } else {
-        ggml_backend_tensor_set(model.a, adata.data(), 0, ggml_nbytes(model.a));
+        ggml_backend_tensor_set(model.a, hadata.data(), 0, ggml_nbytes(model.a));
     }
 
     // alloc memory
@@ -262,10 +262,10 @@ std::vector<float> compute_graph(const test_model & model, ggml_gallocr_t allocr
 
     for(int iter=0; iter<iters; iter++){
         ggml_backend_graph_compute(model.backend, gf);
-        ggml_backend_synchronize(model.backend);
+        // ggml_backend_synchronize(model.backend);
     }
 
-    // ggml_backend_synchronize(model.backend);
+    ggml_backend_synchronize(model.backend);
     int64_t end_time = ggml_time_us();
     double time_us = end_time - start_time;
 
@@ -303,6 +303,7 @@ int main(void)
         std::make_tuple(640,640,104,152),
         std::make_tuple(960,320,104,152),
         std::make_tuple(1280,1280,26,38),
+        std::make_tuple(960,1280,26,38),
         std::make_tuple(1280,640,52,76),
         std::make_tuple(1920,1280,26,38),
         std::make_tuple(2560,1280,26,38),
@@ -338,37 +339,37 @@ int main(void)
         double run_time0;
         std::vector<float> conv2d_data = compute_graph(model, allocr, build_graph_0, iterations, &run_time0);
 
-        ggml_gallocr_free(allocr);
+        // fprintf(stderr, "finish 1\n");
+        // ggml_gallocr_free(allocr);
 
-        allocr = NULL;
+        // allocr = NULL;
         
-        allocr = ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
+        ggml_gallocr_t allocr1 = NULL;
+        allocr1 =  ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
 
         //create the worst case graph for memory usage estimation
         gf = build_graph_1(model);
 
         // compute the required memory
-        ggml_gallocr_reserve(allocr, gf);
-        size_t mem_size1 = ggml_gallocr_get_buffer_size(allocr, 0);
+        ggml_gallocr_reserve(allocr1, gf);
+        size_t mem_size1 = ggml_gallocr_get_buffer_size(allocr1, 0);
             // fprintf(stderr, "%s: compute buffer size: %.2f MB\n", __func__, mem_size/1024.0f/1024.0f);
         
 
-        struct ggml_cgraph * gf_res_1 = NULL;    
-
         double run_time1;
-        std::vector<float> wino_data = compute_graph(model, allocr, build_graph_1, iterations, &run_time1);
+        std::vector<float> wino_data = compute_graph(model, allocr1, build_graph_1, iterations, &run_time1);
 
+        //  fprintf(stderr, "finish 2\n");
+        // ggml_gallocr_free(allocr1);
 
-        ggml_gallocr_free(allocr);
-
-        allocr = NULL;
+        // allocr = NULL;
         
         
 
 
         if(k==0) { 
             k = 1;
-            fprintf(stderr, "| (IC, OC, IW, IH) | im2col+GEMM TIME | im2col+GEMM VRAM | direct TIME |  direct VRAM \n");
+            fprintf(stderr, "| (IC, OC, IW, IH) | im2col+GEMM TIME | im2col+GEMM VRAM | implicit TIME |  implicit VRAM \n");
             fprintf(stderr, "| --- | --- | --- |  --- | --- \n");
         }
 
@@ -390,15 +391,16 @@ int main(void)
         //     // }
         // }
 
-        ggml_free(model.ctx);
-        ggml_backend_buffer_free(model.buffer);
-        ggml_backend_free(model.backend);
         ggml_gallocr_free(allocr);
+        ggml_gallocr_free(allocr1);
+        ggml_backend_buffer_free(model.buffer);
+        ggml_free(model.ctx);
+        ggml_backend_free(model.backend);
 
     }
 
-    
+
     // printf("\nPerforming test:\n");    
-  
+
     return 0;
 }

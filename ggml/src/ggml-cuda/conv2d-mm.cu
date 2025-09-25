@@ -319,7 +319,8 @@ void ggml_cuda_op_conv_2d_variant(ggml_backend_cuda_context & ctx,
     uint32_t NB_K   = CEIL_DIV(p.Cout, BS_K);
     uint32_t NB_NPQ = CEIL_DIV(NPQ, BS_NPQ);
 
-    cudaMemcpyToSymbol(dp, &p, sizeof(Params));
+    cudaStream_t stream = ctx.stream();
+    cudaMemcpyToSymbolAsync(dp, &p, sizeof(Params), 0, cudaMemcpyHostToDevice, stream);
 
     // Kernel arguments
     float * src1_data = (float *) src1->data;
@@ -327,7 +328,6 @@ void ggml_cuda_op_conv_2d_variant(ggml_backend_cuda_context & ctx,
 
     dim3         gridDim(NB_K, NB_NPQ);
     dim3         blockDim(WG_SIZE);
-    cudaStream_t stream = ctx.stream();
     if(src0->type == GGML_TYPE_F16) {
         half *src0_data = (half *) src0->data;
         mm<half, BS_K, BS_NPQ, BS_CRS, TS_K, TS_NPQ, WG_SIZE, VEC_SIZE>

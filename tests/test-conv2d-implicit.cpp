@@ -343,7 +343,13 @@ int main(void)
         // ggml_gallocr_free(allocr);
 
         // allocr = NULL;
+        ggml_gallocr_free(allocr);
+        ggml_backend_buffer_free(model.buffer);
+        ggml_free(model.ctx);
+        ggml_backend_free(model.backend);
         
+
+        load_model(model, std::get<0>(c), std::get<1>(c), std::get<2>(c), std::get<3>(c), true);
         ggml_gallocr_t allocr1 = NULL;
         allocr1 =  ggml_gallocr_new(ggml_backend_get_default_buffer_type(model.backend));
 
@@ -391,7 +397,6 @@ int main(void)
         //     // }
         // }
 
-        ggml_gallocr_free(allocr);
         ggml_gallocr_free(allocr1);
         ggml_backend_buffer_free(model.buffer);
         ggml_free(model.ctx);

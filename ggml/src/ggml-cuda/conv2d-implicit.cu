@@ -193,10 +193,23 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
 //             }
 #pragma unroll
             for (int j = 0; j < 8; ++j){
+                if constexpr (std::is_same_v<T, half>) {
+                    // half2 sumh2[4] = {{0.0f, 0.0f}};
+                    const half2 *x2 =(const half2 *)weight_frag[subcrs % 2];
+                    const half2 xx2 = __float2half2_rn(input_frag[subcrs % 2][j]);
+                    // float2 *y2 = (float2 *) output_frag[j];
+#pragma unroll
+                    for (int i = 0; i < 4; i++){
+                        float2 tmp = __half22float2(__hmul2(xx2,x2[i]));
+                        output_frag[j][i*2] += tmp.x;
+                        output_frag[j][i*2+1] += tmp.y;
+                    }
+                }else if constexpr (std::is_same_v<T, float>) {
                 // auto weight_frag_i = ggml_cuda_cast<float>(weight_frag[subcrs % 2][i]);
 #pragma unroll
-                for (int i = 0; i < 8; ++i){
-                    output_frag[j][i] += ggml_cuda_cast<float>(weight_frag[subcrs % 2][i]) * input_frag[subcrs % 2][j];
+                    for (int i = 0; i < 8; ++i){
+                        output_frag[j][i] += ggml_cuda_cast<float>(weight_frag[subcrs % 2][i]) * input_frag[subcrs % 2][j];
+                    }
                 }
             }
         }
@@ -221,9 +234,22 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
         }
 #pragma unroll
         for (int i = 0; i < 8; ++i){
+            if constexpr (std::is_same_v<T, half>) {
+                    // half2 sumh2[4] = {{0.0f, 0.0f}};
+                const half2 *x2 = (const half2 *)weight_frag[1];
+                const half2 xx2 = __float2half2_rn(input_frag[1][i]);
+                    // float2 *y2 = (float2 *) output_frag[j];
 #pragma unroll
-            for (int j = 0; j < 8; ++j){
-                output_frag[i][j] += ggml_cuda_cast<float>(weight_frag[1][j]) * input_frag[1][i];
+                for (int j = 0; j < 4; j++){
+                    float2 tmp = __half22float2(__hmul2(xx2,x2[j]));
+                    output_frag[i][j*2] += tmp.x;
+                    output_frag[i][j*2+1] += tmp.y;
+                }
+            }else if constexpr (std::is_same_v<T, float>) {
+#pragma unroll
+                for (int j = 0; j < 8; ++j){
+                    output_frag[i][j] += ggml_cuda_cast<float>(weight_frag[1][j]) * input_frag[1][i];
+                }
             }
         }
     }

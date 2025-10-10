@@ -29,7 +29,8 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
 
     extern __shared__ unsigned char smem[];
     T *smemweight = reinterpret_cast<T *>(smem);
-    float *smeminput = reinterpret_cast<float *>(smem + 16 * 1024);
+    // float *smeminput = reinterpret_cast<float *>(smem + 16 * 1024);
+    T *smeminput = reinterpret_cast<T *>(smem + 16 * 1024);
 
     int tx = threadIdx.x;
     int bx = blockIdx.x;
@@ -51,7 +52,7 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
 
     T weight_ldg_reg[4];
     float input_ldg_reg[4];
-    
+
     int posh_ori[4];
     int posw_ori[4];
 #pragma unroll
@@ -73,7 +74,8 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
 
     int write_flag = 1;
     T weight_frag[2][8];
-    float input_frag[2][8];
+    // float input_frag[2][8];
+    T input_frag[2][8];
     float output_frag[8][8];
 #pragma unroll
     for (int i = 0; i < 8; ++i){
@@ -112,7 +114,11 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
         smemweight[weight_sts_addr + i] = weight_ldg_reg[i];
     }
     for (int i = 0; i < 4; ++i){
-        smeminput[input_sts_addr + i * 32] = input_ldg_reg[i];
+        if constexpr (std::is_same_v<T, half>) {
+            smeminput[input_sts_addr + i * 32] = __float2half(input_ldg_reg[i]);
+        } else {
+            smeminput[input_sts_addr + i * 32] = input_ldg_reg[i];
+        }
     }
 
     __syncthreads();
@@ -196,14 +202,15 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
                 if constexpr (std::is_same_v<T, half>) {
                     // half2 sumh2[4] = {{0.0f, 0.0f}};
                     const half2 *x2 =(const half2 *)weight_frag[subcrs % 2];
-                    const half2 xx2 = __float2half2_rn(input_frag[subcrs % 2][j]);
+                    // const half2 xx2 = __float2half2_rn(input_frag[subcrs % 2][j]);
+                    // const half2 xx2 = make_half2(input_frag[subcrs % 2][j],input_frag[subcrs % 2][j]);
                     // float2 *y2 = (float2 *) output_frag[j];
                     #pragma unroll
                     for (int i = 0; i < 4; i++){
                         // float2 tmp = __half22float2(__hmul2(xx2,x2[i]));
                         // output_frag[j][i*2] += tmp.x;
                         // output_frag[j][i*2+1] += tmp.y;
-                        const half2 tmp = __hmul2(xx2,x2[i]);
+                        const half2 tmp = __hmul2(__halves2half2(input_frag[subcrs % 2][j],input_frag[subcrs % 2][j]),x2[i]);
                         output_frag[j][i*2] += __low2float(tmp); //tmp.x;
                         output_frag[j][i*2+1] += __high2float(tmp); //tmp.y;
                     }
@@ -221,7 +228,11 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
             smemweight[write_flag * 132 * 8 + weight_sts_addr + i] = weight_ldg_reg[i];
         }
         for (int i = 0; i < 4; ++i){
-            smeminput[write_flag * 128 * 8 + input_sts_addr + i * 32] = input_ldg_reg[i];
+            if constexpr (std::is_same_v<T, half>) {
+                smeminput[write_flag * 128 * 8 + input_sts_addr + i * 32] = __float2half(input_ldg_reg[i]);
+            } else {
+                smeminput[write_flag * 128 * 8 + input_sts_addr + i * 32] = input_ldg_reg[i];
+            }
         }
         __syncthreads();
         write_flag ^= 1;
@@ -240,14 +251,15 @@ static __global__ void conv2d_implicit_kernel(const float * __restrict__ input,
             if constexpr (std::is_same_v<T, half>) {
                     // half2 sumh2[4] = {{0.0f, 0.0f}};
                 const half2 *x2 = (const half2 *)weight_frag[1];
-                const half2 xx2 = __float2half2_rn(input_frag[1][i]);
+                // const half2 xx2 = __float2half2_rn(input_frag[1][i]);
+                // const half2 xx2 = make_half2(input_frag[1][i], input_frag[1][i]);
                     // float2 *y2 = (float2 *) output_frag[j];
                 #pragma unroll
                 for (int j = 0; j < 4; j++){
                     // float2 tmp = __half22float2(__hmul2(xx2,x2[j]));
                     // output_frag[i][j*2] += tmp.x;
                     // output_frag[i][j*2+1] += tmp.y;
-                    const half2 tmp = __hmul2(xx2,x2[j]);
+                    const half2 tmp = __hmul2(__halves2half2(input_frag[1][i],input_frag[1][i]),x2[j]);
                     output_frag[i][j*2] += __low2float(tmp); //tmp.x;
                     output_frag[i][j*2+1] += __high2float(tmp); //tmp.y;
                 }

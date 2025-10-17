@@ -320,7 +320,8 @@ void ggml_cuda_op_conv_2d_variant(ggml_backend_cuda_context & ctx,
     uint32_t NB_NPQ = CEIL_DIV(NPQ, BS_NPQ);
 
     cudaStream_t stream = ctx.stream();
-    cudaMemcpyToSymbolAsync(dp, &p, sizeof(Params), 0, cudaMemcpyHostToDevice, stream);
+    cudaMemcpyToSymbol(dp, &p, sizeof(Params));
+    // cudaMemcpyToSymbolAsync(dp, &p, sizeof(Params), 0, cudaMemcpyHostToDevice, stream);
 
     // Kernel arguments
     float * src1_data = (float *) src1->data;

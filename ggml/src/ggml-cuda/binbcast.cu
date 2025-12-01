@@ -84,6 +84,8 @@ static __global__ void k_bin_bcast(const src0_t *         src0,
 }
 
 
+#define HALF2(value) (reinterpret_cast<half2 *>(&(value))[0])
+
 template <float (*bin_op)(const float, const float),
           typename src0_t,
           typename src1_t,
@@ -132,6 +134,8 @@ static __global__ void k_bin_bcast_vec(const src0_t *         src0,
     // dst_t * dst_row = dst + i_dst;
 
     src0_t z[sizeof(R) / sizeof(src0_t)];
+    src0_t x[sizeof(R) / sizeof(src0_t)];
+    src0_t y[sizeof(R) / sizeof(src0_t)];
 
     // for (int i0 = i0s; i0 < ne0; i0 += blockDim.x * gridDim.x) {
     for (int i0 = i0s; i0 * sizeof(R) / sizeof(src0_t) < ne0; i0 += blockDim.x * gridDim.x) {
@@ -141,13 +145,20 @@ static __global__ void k_bin_bcast_vec(const src0_t *         src0,
 
         if ((i0 + 1U) * sizeof(R) / sizeof(src0_t) < ne0)
         {
-            R x_v = reinterpret_cast<R const*>(src0)[i0];
-            R y_v = reinterpret_cast<R const*>(src1)[i0];
-            const src0_t *x = (const src0_t *)(&x_v);
-            const src0_t *y = (const src0_t *)(&y_v);
-            #pragma unroll
-            for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); ++j){
-                z[j] = (src0_t)bin_op((float)x[j], (float)y[j]);
+            // R x_v = reinterpret_cast<R const*>(src0)[i0];
+            // R y_v = reinterpret_cast<R const*>(src1)[i0];
+            // const src0_t *x = (const src0_t *)(&x_v);
+            // const src0_t *y = (const src0_t *)(&y_v);
+            (reinterpret_cast<R*>(&x[0]))[0] = reinterpret_cast<R const*>(src0)[i0];
+            (reinterpret_cast<R*>(&y[0]))[0] = reinterpret_cast<R const*>(src1)[i0];
+            if constexpr (std::is_same_v<src0_t, half>){
+                for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); j += 2)
+                    HALF2(z[j]) = __hadd2(HALF2(x[j]), HALF2(y[j]));
+            } else {
+            // #pragma unroll
+                for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); ++j){
+                    z[j] = (src0_t)bin_op((float)x[j], (float)y[j]);
+                }
             }
             reinterpret_cast<R*>(dst)[i0] = reinterpret_cast<R const*>(z)[0];
             // reinterpret_cast<R*>(dst)[i0] = z_v;

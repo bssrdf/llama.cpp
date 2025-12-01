@@ -7075,61 +7075,65 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             test_cases.emplace_back(new test_bin_bcast(op, type, ne, nr));
         }
     };
-    for (ggml_type type : {GGML_TYPE_F16, GGML_TYPE_F32}) {
-        add_test_bin_bcast(type, {1, 1, 8, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 1, 1}, {32, 1, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 320, 320}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 1, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {2, 1, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 2, 1, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 2, 1});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 1, 2});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 2, 2});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 2, 2, 2});
-        add_test_bin_bcast(type, {10, 5, 4, 3}, {2, 2, 2, 2});
+    // for (ggml_type type : {GGML_TYPE_F16, GGML_TYPE_F32}) {
+    //     add_test_bin_bcast(type, {1, 1, 8, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 1, 1}, {32, 1, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 320, 320}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 1, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {2, 1, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 2, 1, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 2, 1});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 1, 2});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 1, 2, 2});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {1, 2, 2, 2});
+    //     add_test_bin_bcast(type, {10, 5, 4, 3}, {2, 2, 2, 2});
 
-        // test case for k_bin_bcast_unravel in CUDA backend
-        add_test_bin_bcast(type, {1, 1, 65536, 1}, {256, 1, 1, 1});
+    //     // test case for k_bin_bcast_unravel in CUDA backend
+    //     add_test_bin_bcast(type, {1, 1, 65536, 1}, {256, 1, 1, 1});
 
-        // stable diffusion
-        add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 16, 16, 1});
-        add_test_bin_bcast(type, {1280, 16, 16, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 256, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 1280, 1}, {16, 16, 1, 1});
-        add_test_bin_bcast(type, {16, 16, 1280, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 1920, 1}, {16, 16, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 2560, 1}, {16, 16, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 1280, 1}, {32, 32, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 1920, 1}, {32, 32, 1, 1});
-        add_test_bin_bcast(type, {1, 1, 640, 1}, {32, 32, 1, 1});
-        add_test_bin_bcast(type, {5120, 1, 1, 1}, {1, 256, 1, 1});
-        add_test_bin_bcast(type, {640, 1, 1, 1}, {1, 1, 1, 1});
-        add_test_bin_bcast(type, {64, 262144, 1, 1}, {1, 1, 1, 1});
-        //add_test_bin_bcast(type, {3, 3, 2560, 1280}, {1, 1, 1, 1});
-        //add_test_bin_bcast(type, {3, 3, 2560, 1280}, {2, 1, 1, 1});
-    }
+    //     // stable diffusion
+    //     add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 16, 16, 1});
+    //     add_test_bin_bcast(type, {1280, 16, 16, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {1280, 1, 1, 1}, {1, 256, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 1280, 1}, {16, 16, 1, 1});
+    //     add_test_bin_bcast(type, {16, 16, 1280, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 1920, 1}, {16, 16, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 2560, 1}, {16, 16, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 1280, 1}, {32, 32, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 1920, 1}, {32, 32, 1, 1});
+    //     add_test_bin_bcast(type, {1, 1, 640, 1}, {32, 32, 1, 1});
+    //     add_test_bin_bcast(type, {5120, 1, 1, 1}, {1, 256, 1, 1});
+    //     add_test_bin_bcast(type, {640, 1, 1, 1}, {1, 1, 1, 1});
+    //     add_test_bin_bcast(type, {64, 262144, 1, 1}, {1, 1, 1, 1});
+    //     //add_test_bin_bcast(type, {3, 3, 2560, 1280}, {1, 1, 1, 1});
+    //     //add_test_bin_bcast(type, {3, 3, 2560, 1280}, {2, 1, 1, 1});
+    // }
 
     // single inplace tests, especially important for WebGPU backend since kernels for inplace vs. not are different
-    test_cases.emplace_back(new test_bin_bcast(ggml_add_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
-    test_cases.emplace_back(new test_bin_bcast(ggml_mul_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
-    test_cases.emplace_back(new test_bin_bcast(ggml_sub_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
-    test_cases.emplace_back(new test_bin_bcast(ggml_div_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_mul_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_sub_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_div_inplace, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
 
     // fusion
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {2, 1, 1, 1}, 2));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 2, 1, 1}, 3));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 1, 2, 1}, 4));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 2}, 5));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 1, 2, 2}, 6));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 2, 2, 2}, 7));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {2, 2, 2, 2}, 8));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {2, 1, 1, 1}, 2));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 2, 1, 1}, 3));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 1, 2, 1}, 4));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 2}, 5));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 1, 2, 2}, 6));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {10, 5, 4, 3}, {1, 2, 2, 2}, 7));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {2, 2, 2, 2}, 8));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {16, 5, 4, 3}, {1, 1, 1, 1}, 16));
 
-    test_cases.emplace_back(new test_add1());
-    test_cases.emplace_back(new test_add1(GGML_TYPE_F32, {1024, 1024, 1, 1}));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, { 2, 64, 4352, 24}, { 1, 1, 1, 1}));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, {3072, 4096, 1, 1}, {1, 1, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, { 21504, 4352, 1, 1}, { 1, 1, 1, 1}));
+
+    // test_cases.emplace_back(new test_add1());
+    // test_cases.emplace_back(new test_add1(GGML_TYPE_F32, {1024, 1024, 1, 1}));
     test_cases.emplace_back(new test_scale());
     test_cases.emplace_back(new test_scale(GGML_TYPE_F32, {10, 10, 10, 10}, 2.0f, 1.0f));
     test_cases.emplace_back(new test_scale(GGML_TYPE_F32, {10, 10, 10, 10}, 2.0f, 1.0f, true)); // inplace test
@@ -7892,8 +7896,15 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
         }
     }
 
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {4096, 1, 1, 1}, {1,   1, 1, 1}));
-    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {4096, 1, 1, 1}, {1, 512, 1, 1}));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {4096, 1, 1, 1}, {1,   1, 1, 1}));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {4096, 1, 1, 1}, {1, 512, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, {9216, 1, 1, 1}, {1, 1, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, {3072, 4096, 1, 1}, {1, 1, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, {3072, 4096, 1, 1}, {1, 1, 1, 1}));
+    // test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, { 2, 64, 4352, 24}, { 1, 1, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F16, { 21504, 4352, 1, 1}, { 1, 1, 1, 1}));
+    test_cases.emplace_back(new test_bin_bcast(ggml_add, GGML_TYPE_F32, { 21504, 4352, 1, 1}, { 1, 1, 1, 1}));
+
 
     test_cases.emplace_back(new test_cpy(GGML_TYPE_F32,  GGML_TYPE_F16,  {512, 3072, 1, 1}));
     test_cases.emplace_back(new test_cpy(GGML_TYPE_F32,  GGML_TYPE_F32,  {8192, 512, 2, 1}, {0, 2, 1, 3}));

@@ -139,9 +139,6 @@ static __global__ void k_bin_bcast_vec(const src0_t *         src0,
 
     // for (int i0 = i0s; i0 < ne0; i0 += blockDim.x * gridDim.x) {
     for (int i0 = i0s; i0 * sizeof(R) / sizeof(src0_t) < ne0; i0 += blockDim.x * gridDim.x) {
-        // if(threadIdx.x == 0 && blockIdx.x == 0){
-        //     printf(" %d, %d, \n", i0, ne0);
-        // }
 
         if ((i0 + 1U) * sizeof(R) / sizeof(src0_t) < ne0)
         {
@@ -151,17 +148,15 @@ static __global__ void k_bin_bcast_vec(const src0_t *         src0,
             // const src0_t *y = (const src0_t *)(&y_v);
             (reinterpret_cast<R*>(&x[0]))[0] = reinterpret_cast<R const*>(src0)[i0];
             (reinterpret_cast<R*>(&y[0]))[0] = reinterpret_cast<R const*>(src1)[i0];
-            if constexpr (std::is_same_v<src0_t, half>){
-                for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); j += 2)
-                    HALF2(z[j]) = __hadd2(HALF2(x[j]), HALF2(y[j]));
-            } else {
+            // if constexpr (std::is_same_v<src0_t, half>){
+            //     for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); j += 2)
+            //         HALF2(z[j]) = __hadd2(HALF2(x[j]), HALF2(y[j]));
+            // } else {
             // #pragma unroll
-                for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); ++j){
-                    z[j] = (src0_t)bin_op((float)x[j], (float)y[j]);
-                }
+            for (size_t j{0}; j < sizeof(R) / sizeof(src0_t); ++j){
+                z[j] = (src0_t)bin_op((float)x[j], (float)y[j]);
             }
             reinterpret_cast<R*>(dst)[i0] = reinterpret_cast<R const*>(z)[0];
-            // reinterpret_cast<R*>(dst)[i0] = z_v;
         }
         else
         {
@@ -407,34 +402,38 @@ static void launch_bin_bcast_pack(const ggml_tensor * src0, const ggml_tensor * 
         } else {
             const uint3 ne3_fastdiv = init_fastdiv_values((uint32_t) ne3);
             if constexpr (sizeof...(I) > 0) {
-                if constexpr (std::is_same_v<src0_t, src1_t>) {
-                    if(nr0 == 1 && nr1 == 1 && nr2 == 1 && nr3 == 1) {
-                        // printf("using A \n");
-                        // printf("%zu, %zu, %zu, %zu, (%d, %d, %d), (%d, %d, %d), (%d, %d, %d) \n", ne0, ne1, ne2, ne3, s1, s2, s3, s01, s02, s03, s11, s12, s13);
-                        // printf("using vec \n");
-                        block_dims.x = block_size;
-                        block_dims.y = 1;block_dims.z = 1;
-                        block_nums.x = (ne0 + block_size*sizeof(float4)/sizeof(src0_t)-1U) /(block_size*sizeof(float4)/sizeof(src0_t));
-                        block_nums.y = 1;block_nums.z = 1;
-                        // printf(" block_nums (%d, %d , %d)\n ", block_nums.x, block_nums.y, block_nums.z);
-                        // printf(" block_dims (%d, %d , %d)\n ", block_dims.x, block_dims.y, block_dims.z);
-                        k_bin_bcast_vec<bin_op, src0_t, src1_t, dst_t, float4><<<block_nums, block_dims, 0, stream>>>(
-                        src0_dd, src1_dd, dst_dd, ne0, ne1, ne2, ne3_fastdiv, ne10, ne11, ne12, ne13,
-                        /* s0, */ s1, s2, s3,
-                        /* s00,*/ s01, s02, s03,
-                        /* s10,*/ s11, s12, s13, (const src1_t *) dst->src[I + 1]->data...);
-                    } else {
-                        GGML_ASSERT(false);
-                    }
-                }
-                else{
+                // if constexpr (std::is_same_v<src0_t, src1_t>) {
+                //     if(nr0 == 1 && nr1 == 1 && nr2 == 1 && nr3 == 1) {
+                //         // printf("using A \n");
+                //         // printf("%zu, %zu, %zu, %zu, (%d, %d, %d), (%d, %d, %d), (%d, %d, %d) \n", ne0, ne1, ne2, ne3, s1, s2, s3, s01, s02, s03, s11, s12, s13);
+                //         // printf("using vec \n");
+                //         block_dims.x = block_size;
+                //         block_dims.y = 1;block_dims.z = 1;
+                //         block_nums.x = (ne0 + block_size*sizeof(float4)/sizeof(src0_t)-1U) /(block_size*sizeof(float4)/sizeof(src0_t));
+                //         block_nums.y = 1;block_nums.z = 1;
+                //         // printf(" block_nums (%d, %d , %d)\n ", block_nums.x, block_nums.y, block_nums.z);
+                //         // printf(" block_dims (%d, %d , %d)\n ", block_dims.x, block_dims.y, block_dims.z);
+                //         k_bin_bcast_vec<bin_op, src0_t, src1_t, dst_t, float4><<<block_nums, block_dims, 0, stream>>>(
+                //         src0_dd, src1_dd, dst_dd, ne0, ne1, ne2, ne3_fastdiv, ne10, ne11, ne12, ne13,
+                //         /* s0, */ s1, s2, s3,
+                //         /* s00,*/ s01, s02, s03,
+                //         /* s10,*/ s11, s12, s13, (const src1_t *) dst->src[I + 1]->data...);
+                //     } else {
+                //         k_bin_bcast<bin_op, src0_t, src1_t, dst_t><<<block_nums, block_dims, 0, stream>>>(
+                //         src0_dd, src1_dd, dst_dd, ne0, ne1, ne2, ne3_fastdiv, ne10, ne11, ne12, ne13,
+                //         /* s0, */ s1, s2, s3,
+                //         /* s00,*/ s01, s02, s03,
+                //         /* s10,*/ s11, s12, s13, (const src1_t *) dst->src[I + 1]->data...);
+                //     }
+                // }
+                // else{
                     // printf("using B \n");
                 k_bin_bcast<bin_op, src0_t, src1_t, dst_t><<<block_nums, block_dims, 0, stream>>>(
                     src0_dd, src1_dd, dst_dd, ne0, ne1, ne2, ne3_fastdiv, ne10, ne11, ne12, ne13,
                     /* s0, */ s1, s2, s3,
                     /* s00,*/ s01, s02, s03,
                     /* s10,*/ s11, s12, s13, (const src1_t *) dst->src[I + 1]->data...);
-                }
+                // }
             } else {
                 if constexpr (std::is_same_v<src0_t, src1_t>) {
                     if(nr0 == 1 && nr1 == 1 && nr2 == 1 && nr3 == 1) {
@@ -449,7 +448,11 @@ static void launch_bin_bcast_pack(const ggml_tensor * src0, const ggml_tensor * 
                         /* s00,*/ s01, s02, s03,
                         /* s10,*/ s11, s12, s13);
                     } else {
-                        GGML_ASSERT(false);
+                        k_bin_bcast<bin_op, src0_t, src1_t, dst_t><<<block_nums, block_dims, 0, stream>>>(
+                        src0_dd, src1_dd, dst_dd, ne0, ne1, ne2, ne3_fastdiv, ne10, ne11, ne12, ne13,
+                        /* s0, */ s1, s2, s3,
+                        /* s00,*/ s01, s02, s03,
+                        /* s10,*/ s11, s12, s13);
                     }
                 }
                 else{
@@ -494,7 +497,7 @@ static __global__ void k_repeat_back(
     dst[tid3*ne2*ne1*ne0 + tid2*ne1*ne0 + tid1*ne0 + tid0] = sum;
 }
 
-template <float (*bin_op)(const float, const float), int n_fuse = 1>
+template <float (*bin_op)(const float, const float), int n_fuse = 0>
 struct bin_bcast_cuda {
     template<typename src0_t, typename src1_t, typename dst_t>
     void operator()(const struct ggml_tensor * src0, const struct ggml_tensor * src1, struct ggml_tensor * dst,

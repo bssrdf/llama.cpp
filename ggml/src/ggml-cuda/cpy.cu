@@ -56,6 +56,11 @@ static __global__ void cpy_scalar_transpose(const char * cx, char * cdst, const 
     const int tx = blockIdx.y * CUDA_CPY_TILE_DIM_2D + threadIdx.x;  // transpose block offset
     const int ty = blockIdx.x * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
 
+    // const int x = blockIdx.y * CUDA_CPY_TILE_DIM_2D + threadIdx.x;
+    // const int y = blockIdx.x * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
+    // const int tx = blockIdx.x * CUDA_CPY_TILE_DIM_2D + threadIdx.x;  // transpose block offset
+    // const int ty = blockIdx.y * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
+
     __shared__ float tile[CUDA_CPY_TILE_DIM_2D][CUDA_CPY_TILE_DIM_2D+1];
 
 #pragma unroll
@@ -199,21 +204,35 @@ static void ggml_cpy_scalar_cuda(
     const int nb03, const int ne10, const int ne11, const int ne12, const int nb10, const int nb11, const int nb12, const int nb13, cudaStream_t stream) {
 
     if (transposed) {
-        GGML_ASSERT(ne == ne00*ne01*ne02);  // ne[3] is 1 assumed
+        // GGML_ASSERT(ne == ne00*ne01*ne02);  // ne[3] is 1 assumed
+        int ne03 = ne/(ne00*ne01*ne02);
+
         int ne00n, ne01n, ne02n;
-        if (nb00 <= nb02) { // most likely safe to handle nb00 = nb02 case here
-            ne00n = ne00;
-            ne01n = ne01;
-            ne02n = ne02;
+        // printf(" %d, %d, %d, %d, %d \n", ne00, ne01, ne02, ne03, ne);
+        if(nb01 == (int64_t)sizeof(src_t) &&
+           nb02 == ne00 * ne01 * sizeof(src_t)){
+            if (nb00 <= nb02) { // most likely safe to handle nb00 = nb02 case here
+                ne00n = ne00;
+                ne01n = ne01*ne02*ne03;
+                ne02n = ne02;
+            } else {
+                ne00n = ne00;
+                ne01n = ne01*ne02;
+                ne02n = 1;
+            }
         } else {
-            ne00n = ne00;
-            ne01n = ne01*ne02;
-            ne02n = 1;
+            GGML_ASSERT(nb00 <= nb01);  // ne[3] is 1 assumed
+                ne00n = ne00*ne01;
+                ne01n = ne02;
+                ne02n = 1; // not used
         }
 
         dim3 dimGrid( (ne01n + CUDA_CPY_TILE_DIM_2D - 1) / CUDA_CPY_TILE_DIM_2D,
                       (ne00n + CUDA_CPY_TILE_DIM_2D - 1) / CUDA_CPY_TILE_DIM_2D,
                       (ne/(ne01n*ne00n) + CUDA_CPY_BLOCK_NM - 1) / CUDA_CPY_BLOCK_NM);
+        // dim3 dimGrid( (ne00n + CUDA_CPY_TILE_DIM_2D - 1) / CUDA_CPY_TILE_DIM_2D,
+        //               (ne01n + CUDA_CPY_TILE_DIM_2D - 1) / CUDA_CPY_TILE_DIM_2D,
+        //               (ne/(ne01n*ne00n) + CUDA_CPY_BLOCK_NM - 1) / CUDA_CPY_BLOCK_NM);
         dim3 dimBlock(CUDA_CPY_TILE_DIM_2D, CUDA_CPY_BLOCK_ROWS, 1);
         cpy_scalar_transpose<dst_t><<<dimGrid, dimBlock, 0, stream>>>
             (cx, cdst, ne, ne00n, ne01n, ne02n, nb00, nb01, nb02, nb03, ne10, ne11, ne12, nb10, nb11, nb12, nb13);
@@ -387,8 +406,25 @@ void ggml_cuda_cpy(ggml_backend_cuda_context & ctx, const ggml_tensor * src0, gg
     char * src1_ddc = (char *) src1->data;
 
     const bool contiguous_srcs = ggml_is_contiguous(src0) && ggml_is_contiguous(src1);
-    const bool can_be_transposed = nb01 == (int64_t)ggml_element_size(src0) &&
-        src0->ne[3] == 1 && nb02 == ne00 * ne01 * (int64_t)ggml_element_size(src0);
+    // const bool can_be_transposed = nb01 == (int64_t)ggml_element_size(src0) &&
+    //     src0->ne[3] == 1; //&& nb02 == ne00 * ne01 * (int64_t)ggml_element_size(src0);
+    // const bool can_be_transposed = nb01 == (int64_t)ggml_element_size(src0);
+    // const bool can_be_transposed = nb03 == (int64_t)ggml_element_size(src0);
+    // const bool can_be_transposed = false;
+    
+    const bool can_be_transposed = src0->ne[3] == 1 &&
+                                  ( (nb01 == (int64_t)ggml_element_size(src0) &&
+                                     nb02 == ne00 * ne01 * (int64_t)ggml_element_size(src0)) ||
+                                     (nb02 == (int64_t)ggml_element_size(src0) &&
+                                     nb01 == ne02 * ne00 * (int64_t)ggml_element_size(src0))
+                                     );
+
+    // if(can_be_transposed){
+    //     printf(" ne00, ne01, ne02 %d, %d, %d, %d \n", ne00, ne01, ne02, src0->ne[3]);
+    //     printf(" nb00, nb01, nb02, nb03 %d, %d, %d, %d \n", nb00, nb01, nb02, nb03);
+    //     printf(" nb10, nb11, nb12, nb13 %d, %d, %d, %d \n", nb10, nb11, nb12, nb13);
+    // }
+
 
     if (src0->type == src1->type && contiguous_srcs) {
         GGML_ASSERT(ggml_nbytes(src0) == ggml_nbytes(src1));

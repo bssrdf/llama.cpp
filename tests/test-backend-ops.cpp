@@ -7953,15 +7953,26 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_perf() {
     // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {2, 64, 4352, 24}, {3, 0, 1, 2}, {0, 0, 0, 0}));
     // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {32, 64, 4352, 24}, {3, 0, 1, 2}, {0, 0, 0, 0}));
 
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {2, 64, 2, 1024}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {4, 4096, 16, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 6, 1, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {128, 24, 4352, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 1, 256, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 1, 4096, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 4352, 1, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {4, 16, 4096, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {2, 64, 2, 1024}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {4, 4096, 16, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 6, 1, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {128, 24, 4352, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 1, 256, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 1, 4096, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {3072, 4352, 1, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    // test_cases.emplace_back(new test_cpy(GGML_TYPE_BF16, GGML_TYPE_BF16, {4, 16, 4096, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
 
+    // llama bench Qwen1.5
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F16, GGML_TYPE_F16, {128, 16, 256, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F32, GGML_TYPE_F32, {128, 16, 256, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F16, GGML_TYPE_F16, {256, 16, 128, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F32, GGML_TYPE_F32, {256, 16, 128, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+
+    // llama bench gpt-oss
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F32, GGML_TYPE_F32, {64, 128, 64, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F32, GGML_TYPE_F32, {64, 64, 128, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F16, GGML_TYPE_F16, {64, 8, 256, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
+    test_cases.emplace_back(new test_cpy(GGML_TYPE_F16, GGML_TYPE_F16, {256, 8, 64, 1}, {0, 2, 1, 3}, {0, 0, 0, 0}));
 
     test_cases.emplace_back(new test_soft_max(GGML_TYPE_F32, {4096, 4096, 5, 1}, false, false, GGML_TYPE_F32, {1, 1}, 1.0f, 0.0f));
     test_cases.emplace_back(new test_soft_max(GGML_TYPE_F32, {12888, 256, 5, 1}, false, false, GGML_TYPE_F32, {1, 1}, 1.0f, 0.0f));
